@@ -11,6 +11,7 @@ pkgbase=linux-morphius               # Build stock -ARCH kernel
 _ver=6
 pkgver=6.2.6
 pkgrel=1
+provides=('chromeos-acpi-dkms-git')
 pkgdesc="Linux Morphius"
 arch=(x86_64)
 url="https://kernel.org/"
