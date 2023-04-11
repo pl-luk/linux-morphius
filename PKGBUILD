@@ -9,8 +9,8 @@
 pkgbase=linux-morphius               # Build stock -ARCH kernel
 #pkgbase=linux-custom       # Build kernel with a different name
 _ver=6
-pkgver=6.2.6
-pkgrel=2
+pkgver=6.2.10
+pkgrel=1
 provides=('chromeos-acpi-dkms-git')
 pkgdesc="Linux Morphius"
 arch=(x86_64)
@@ -19,7 +19,7 @@ license=(GPL2)
 makedepends=(
   bc libelf pahole cpio perl tar xz gettext
   xmlto python-sphinx python-sphinx_rtd_theme graphviz imagemagick texlive-latexextra
-  git
+  git linux-firmware clang
 )
 options=('!strip')
 _srcname=linux-$pkgver
@@ -33,8 +33,8 @@ validpgpkeys=(
   'A2FF3A36AAA56654109064AB19802F8B0D70FC30'  # Jan Alexander Steffens (heftig)
 )
 
-sha256sums=('1fe2f1d7ceb7129c111159d8efd361971dbf212206f81e7078b98df8b00b3d9d'
-            'e42fe4be5f392d883fc5a314c626ad64c1c312614b37486769910ae4ba4acc99')
+sha256sums=('57c562c3cd2753f232549cab05c8ad770ed848ae86401619c7581bdffaeea4fe'
+            '4cd5a7aa393dd41141ca743fb4ffe0ecd9797a218eabe0be8dff62b1abf3bb87')
 
 export KBUILD_BUILD_HOST=archlinux
 export KBUILD_BUILD_USER=$pkgbase
@@ -42,6 +42,20 @@ export KBUILD_BUILD_TIMESTAMP="$(date -Ru${SOURCE_DATE_EPOCH:+d @$SOURCE_DATE_EP
 
 prepare() {
   cd linux-$pkgver
+
+  # Copy and extract firmware from linux-firmware
+  echo "Copying and extracting firmware from /usr/lib/firmware..."
+  mkdir -p fw
+  cd fw
+  cp -r /usr/lib/firmware/amdgpu/ .
+  cp /usr/lib/firmware/iwlwifi-cc-a0-59.ucode.xz .
+  
+  cd amdgpu
+  xz -d ./*
+  cd ..
+  xz -d iwlwifi-cc-a0-59.ucode.xz
+
+  cd ..
 
   #echo "Setting version..."
   #scripts/setlocalversion
