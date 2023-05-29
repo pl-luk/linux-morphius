@@ -9,7 +9,7 @@
 pkgbase=linux-morphius               # Build stock -ARCH kernel
 #pkgbase=linux-custom       # Build kernel with a different name
 _ver=6
-pkgver=6.2.10
+pkgver=6.3.4
 pkgrel=1
 provides=('chromeos-acpi-dkms-git')
 pkgdesc="Linux Morphius"
@@ -32,9 +32,8 @@ validpgpkeys=(
   '647F28654894E3BD457199BE38DBBDC86092693E'  # Greg Kroah-Hartman
   'A2FF3A36AAA56654109064AB19802F8B0D70FC30'  # Jan Alexander Steffens (heftig)
 )
-
-sha256sums=('57c562c3cd2753f232549cab05c8ad770ed848ae86401619c7581bdffaeea4fe'
-            '4cd5a7aa393dd41141ca743fb4ffe0ecd9797a218eabe0be8dff62b1abf3bb87')
+sha256sums=('d8627528ed6b3ae607d00b1ef5a46e0e7051ae40b285fd4e82f4ff0bb72b68e8'
+            'db7db82f6c674cb497948dac6a14c9cbb8a41d7a47461d3246cab47c8558a92b')
 
 export KBUILD_BUILD_HOST=archlinux
 export KBUILD_BUILD_USER=$pkgbase
@@ -44,7 +43,9 @@ prepare() {
   cd linux-$pkgver
 
   # Copy and extract firmware from linux-firmware
-  echo "Copying and extracting firmware from /usr/lib/firmware..."
+  echo ">>> Removing firmware from previous build..."
+  rm -rf fw
+  echo ">>> Copying and extracting firmware from /usr/lib/firmware..."
   mkdir -p fw
   cd fw
   cp -r /usr/lib/firmware/amdgpu/ .
