@@ -9,7 +9,7 @@
 pkgbase=linux-morphius               # Build stock -ARCH kernel
 #pkgbase=linux-custom       # Build kernel with a different name
 _ver=6
-pkgver=6.3.4
+pkgver=6.4.9
 pkgrel=1
 provides=('chromeos-acpi-dkms-git')
 pkgdesc="Linux Morphius"
@@ -32,8 +32,9 @@ validpgpkeys=(
   '647F28654894E3BD457199BE38DBBDC86092693E'  # Greg Kroah-Hartman
   'A2FF3A36AAA56654109064AB19802F8B0D70FC30'  # Jan Alexander Steffens (heftig)
 )
-sha256sums=('d8627528ed6b3ae607d00b1ef5a46e0e7051ae40b285fd4e82f4ff0bb72b68e8'
-            'db7db82f6c674cb497948dac6a14c9cbb8a41d7a47461d3246cab47c8558a92b')
+
+sha256sums=('b8b8a29852b999f337c4e93eff6c91fb7fd2d49a6614cbcbeb6fa171ba55cc9f'
+            'f4510a65b1b30cd1f725e4c1b81d5b40b7efbf7b9bbec74ba70ddf20bb2fbdf2')
 
 export KBUILD_BUILD_HOST=archlinux
 export KBUILD_BUILD_USER=$pkgbase
@@ -49,12 +50,12 @@ prepare() {
   mkdir -p fw
   cd fw
   cp -r /usr/lib/firmware/amdgpu/ .
-  cp /usr/lib/firmware/iwlwifi-cc-a0-59.ucode.xz .
+  cp /usr/lib/firmware/iwlwifi-cc-a0-59.ucode.zst .
   
   cd amdgpu
-  xz -d ./*
+  zstd -d ./*
   cd ..
-  xz -d iwlwifi-cc-a0-59.ucode.xz
+  zstd -d iwlwifi-cc-a0-59.ucode.zst
 
   cd ..
 
