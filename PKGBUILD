@@ -1,49 +1,54 @@
-#
-# Maintainer: Mikael Eriksson <mikael_eriksson@miffe.org>
-#
-# Based on the linux package by:
 # Maintainer: Jan Alexander Steffens (heftig) <heftig@archlinux.org>
-# Maintainer: Tobias Powalowski <tpowa@archlinux.org>
-# Maintainer: Thomas Baechler <thomas@archlinux.org>
 
-pkgbase=linux-morphius               # Build stock -ARCH kernel
-#pkgbase=linux-custom       # Build kernel with a different name
-_ver=6
-pkgver=6.4.9
+pkgbase=linux-morphius
+pkgver=6.4.10
 pkgrel=1
-provides=('chromeos-acpi-dkms-git')
-pkgdesc="Linux Morphius"
+pkgdesc='Linux'
+_srctag=v${pkgver%.*}-${pkgver##*.}
+url="https://github.com/archlinux/linux/commits/$_srctag"
 arch=(x86_64)
-url="https://kernel.org/"
 license=(GPL2)
 makedepends=(
-  bc libelf pahole cpio perl tar xz gettext
-  xmlto python-sphinx python-sphinx_rtd_theme graphviz imagemagick texlive-latexextra
-  git linux-firmware clang
+  bc
+  cpio
+  gettext
+  git
+  libelf
+  pahole
+  perl
+  python
+  tar
+  xz
 )
 options=('!strip')
-_srcname=linux-$pkgver
+_srcname=linux-$pkgver-arch1
 source=(
-  $_srcname.tar.xz::https://cdn.kernel.org/pub/linux/kernel/v$_ver.x/linux-$pkgver.tar.xz # kernel tarball 
-  config         # the main kernel config file
+  $_srcname.tar.gz::https://github.com/archlinux/linux/archive/refs/tags/v$pkgver-arch1.tar.gz
+  config  # the main kernel config file
 )
 validpgpkeys=(
-  'ABAF11C65A2970B130ABE3C479BE3E4300411886'  # Linus Torvalds
-  '647F28654894E3BD457199BE38DBBDC86092693E'  # Greg Kroah-Hartman
-  'A2FF3A36AAA56654109064AB19802F8B0D70FC30'  # Jan Alexander Steffens (heftig)
+  ABAF11C65A2970B130ABE3C479BE3E4300411886  # Linus Torvalds
+  647F28654894E3BD457199BE38DBBDC86092693E  # Greg Kroah-Hartman
+  A2FF3A36AAA56654109064AB19802F8B0D70FC30  # Jan Alexander Steffens (heftig)
+  C7E7849466FE2358343588377258734B41C31549  # David Runge <dvzrv@archlinux.org>
 )
+b2sums=('37e36e056f6a51ffca9cdd796f28faa4eb180e56fc0cbe0cdff6c8afd97a8b041d07e8e594f4cf9fe4cd1893f1b0097407f2c5b310421fb5d1f0502a3d8e03da'
+        'cd181595b84a8e9b428e96e3faa392caf79b3ba34b9b147d6d17c2378b3558ec68622a69ded6ef9974beba1e241994d91adb8d566246df9d73d2aeff32c530f7')
 
-sha256sums=('b8b8a29852b999f337c4e93eff6c91fb7fd2d49a6614cbcbeb6fa171ba55cc9f'
-            'f4510a65b1b30cd1f725e4c1b81d5b40b7efbf7b9bbec74ba70ddf20bb2fbdf2')
 
 export KBUILD_BUILD_HOST=archlinux
 export KBUILD_BUILD_USER=$pkgbase
 export KBUILD_BUILD_TIMESTAMP="$(date -Ru${SOURCE_DATE_EPOCH:+d @$SOURCE_DATE_EPOCH})"
 
-prepare() {
-  cd linux-$pkgver
+_make() {
+  test -s version
+  make KERNELRELEASE="$(<version)" "$@"
+}
 
-  # Copy and extract firmware from linux-firmware
+prepare() {
+  cd $_srcname
+
+  # We need to include amdgpu firmware and wifi firmware in the kernel
   echo ">>> Removing firmware from previous build..."
   rm -rf fw
   echo ">>> Copying and extracting firmware from /usr/lib/firmware..."
@@ -59,10 +64,12 @@ prepare() {
 
   cd ..
 
-  #echo "Setting version..."
-  #scripts/setlocalversion
-  #echo "-$pkgrel" > localversion.10-pkgrel
-  #echo "${pkgbase#linux}" > localversion.20-pkgname
+  echo "Setting version..."
+  echo "-$pkgrel" > localversion.10-pkgrel
+  echo "${pkgbase#linux}" > localversion.20-pkgname
+  make defconfig
+  make -s kernelrelease > version
+  make mrproper
 
   local src
   for src in "${source[@]}"; do
@@ -75,41 +82,51 @@ prepare() {
 
   echo "Setting config..."
   cp ../config .config
-  make olddefconfig CC=clang
+  _make olddefconfig
   diff -u ../config .config || :
 
-  make -s kernelrelease CC=clang > version
   echo "Prepared $pkgbase version $(<version)"
 }
 
 build() {
   cd $_srcname
-  make -j8 all CC=clang
-  make -j8 htmldocs
+  _make all
 }
 
 _package() {
   pkgdesc="The $pkgdesc kernel and modules"
-  depends=(coreutils kmod initramfs)
-  optdepends=('wireless-regdb: to set the correct wireless channels of your country'
-              'linux-firmware: firmware images needed for some devices')
-  provides=(VIRTUALBOX-GUEST-MODULES WIREGUARD-MODULE)
-  replaces=(virtualbox-guest-modules-mainline wireguard-mainline)
+  depends=(
+    coreutils
+    initramfs
+    kmod
+  )
+  optdepends=(
+    'wireless-regdb: to set the correct wireless channels of your country'
+    'linux-firmware: firmware images needed for some devices'
+  )
+  provides=(
+    KSMBD-MODULE
+    VIRTUALBOX-GUEST-MODULES
+    WIREGUARD-MODULE
+  )
+  replaces=(
+    virtualbox-guest-modules-arch
+    wireguard-arch
+  )
 
   cd $_srcname
-  local kernver="$(<version)"
-  local modulesdir="$pkgdir/usr/lib/modules/$kernver"
+  local modulesdir="$pkgdir/usr/lib/modules/$(<version)"
 
   echo "Installing boot image..."
   # systemd expects to find the kernel here to allow hibernation
   # https://github.com/systemd/systemd/commit/edda44605f06a41fb86b7ab8128dcf99161d2344
-  install -Dm644 "$(make -s image_name CC=clang)" "$modulesdir/vmlinuz"
+  install -Dm644 "$(_make -s image_name)" "$modulesdir/vmlinuz"
 
   # Used by mkinitcpio to name the kernel
   echo "$pkgbase" | install -Dm644 /dev/stdin "$modulesdir/pkgbase"
 
   echo "Installing modules..."
-  make CC=clang INSTALL_MOD_PATH="$pkgdir/usr" INSTALL_MOD_STRIP=1 \
+  ZSTD_CLEVEL=19 _make INSTALL_MOD_PATH="$pkgdir/usr" INSTALL_MOD_STRIP=1 \
     DEPMOD=/doesnt/exist modules_install  # Suppress depmod
 
   # remove build and source links
@@ -125,16 +142,13 @@ _package-headers() {
 
   echo "Installing build files..."
   install -Dt "$builddir" -m644 .config Makefile Module.symvers System.map \
-    version vmlinux
+    localversion.* version vmlinux
   install -Dt "$builddir/kernel" -m644 kernel/Makefile
   install -Dt "$builddir/arch/x86" -m644 arch/x86/Makefile
   cp -t "$builddir" -a scripts
 
   # required when STACK_VALIDATION is enabled
   install -Dt "$builddir/tools/objtool" tools/objtool/objtool
-
-  # required when DEBUG_INFO_BTF_MODULES is enabled
-  # install -Dt "$builddir/tools/bpf/resolve_btfids" tools/bpf/resolve_btfids/resolve_btfids
 
   echo "Installing headers..."
   cp -t "$builddir" -a include
@@ -198,26 +212,10 @@ _package-headers() {
   ln -sr "$builddir" "$pkgdir/usr/src/$pkgbase"
 }
 
-_package-docs() {
-  pkgdesc="Documentation for the $pkgdesc kernel"
-
-  cd $_srcname
-  local builddir="$pkgdir/usr/lib/modules/$(<version)/build"
-
-  echo "Installing documentation..."
-  local src dst
-  while read -rd '' src; do
-    dst="${src#Documentation/}"
-    dst="$builddir/Documentation/${dst#output/}"
-    install -Dm644 "$src" "$dst"
-  done < <(find Documentation -name '.*' -prune -o ! -type d -print0)
-
-  echo "Adding symlink..."
-  mkdir -p "$pkgdir/usr/share/doc"
-  ln -sr "$builddir/Documentation" "$pkgdir/usr/share/doc/$pkgbase"
-}
-
-pkgname=("$pkgbase" "$pkgbase-headers" "$pkgbase-docs")
+pkgname=(
+  "$pkgbase"
+  "$pkgbase-headers"
+)
 for _p in "${pkgname[@]}"; do
   eval "package_$_p() {
     $(declare -f "_package${_p#$pkgbase}")
